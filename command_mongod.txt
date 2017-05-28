@@ -1,0 +1,1 @@
+mongod --dbpath "C:\ [insert here the path to this folder] \data\db"

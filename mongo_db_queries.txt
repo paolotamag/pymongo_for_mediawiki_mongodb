@@ -1,0 +1,54 @@
+1 -------------------------------
+show dbs
+use wiki_one_collection
+show collections
+db.page.createIndex( { 'page_id': 1 } )
+2 -------------------------------
+db.page.find(
+            {"$and":[{ "categories.cat_title": {"$regex" : ".*_War_.*"}},
+            {"page_title": {"$regex" : ".*_submarine_.*"}}]},
+            {"page_title":1,"_id":0}
+            )
+3 -------------------------------
+db.page.distinct("page_namespace")
+4 -------------------------------
+db.page.aggregate([ 
+{"$match": {"page_touched": {"$gt": 20170000000000 }}}, 
+{"$group": {"_id": "$page_namespace", "count": {"$sum": 1}}}, 
+{ "$sort" : { "count": -1 } }])
+5 -------------------------------
+db.page.aggregate([
+  {"$unwind": "$images"}, 
+  {"$group": {"_id":"$page_title", "images": {"$push":"$images.img_name"}, "#_of_images": {"$sum":1}}}, 
+  {"$sort":{"#_of_images":-1}}])
+6 -------------------------------
+db.page.aggregate([
+    {"$unwind": "$images"}, 
+    {"$group": {"_id":"$images.img_user_text", "unique_images": {"$addToSet":"$images.img_name"}}},
+    {"$project": {"_id": 1, 'unique_images': 1, "#_of_images": { "$size": "$unique_images" } }},
+    {"$sort":{"#_of_images":-1}}])
+7 -------------------------------
+show dbs
+use wiki_multiple_collections
+show collections
+db.page.createIndex( { 'page_id': 1 } )
+db.pagelinks.createIndex( { 'pl_from': 1,'pl_title': 1 } )
+db.image.createIndex( { 'img_name': 1 } )
+db.imagelinks.createIndex( { 'il_from': 1,'il_to': 1} )
+db.category.createIndex( { 'cat_id': 1 } )
+db.categorylinks.createIndex( { 'cl_from': 1,'cl_to': 1 } )
+8 -------------------------------
+var page_Star = db.page.find({"page_title":"Starfury"})
+var pageIds = page_Star.map(function(c) {return c.page_id;})
+db.imagelinks.find({il_from: {$in:pageIds}}, {il_to: 1,_id:0})
+9 -------------------------------
+var user_Theo = db.image.find({"img_user_text":"Theo's Little Bot"})
+var images_of_Theo = user_Theo.map(function(c) {return c.img_name;})
+var page_Theo = db.imagelinks.find({il_to: {$in:images_of_Theo}})
+var pageIds_Theo = page_Theo.map(function(c) {return c.il_from;})
+db.page.find({page_id: {$in:pageIds_Theo}}, {page_title: 1,_id:0})
+10 -------------------------------
+var infos_TLC = db.page.find({"page_title":"Telecommunications_in_Italy"}).map(function(c) {return c.page_id; })
+var links_1 = db.pagelinks.find({pl_from: {$in:infos_TLC}}).map(function(c) {return c.pl_title; })
+var ids_links_1 = db.page.find({page_title: {$in:links_1}}).map(function(c) {return c.page_id; })
+db.pagelinks.find({pl_from: {$in:ids_links_1}},{pl_title:1,_id:0})

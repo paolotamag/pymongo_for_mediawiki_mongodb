@@ -1,0 +1,67 @@
+"C:\Program Files\MySQL\MySQL Server 5.7\bin\mysqladmin" -u paolotamag shutdown -p
+
+SHOW VARIABLES LIKE "secure_file_priv";
+
+use wiki;
+
+create table page_sample as
+SELECT *
+FROM page
+where rand() <= 0.01
+limit 30000;
+
+select *
+from page_sample
+INTO OUTFILE 'page_30k.csv'
+FIELDS TERMINATED BY ','
+ENCLOSED BY '"'
+LINES TERMINATED BY '\n';
+
+select cl.cl_from, cl.cl_to, cl.cl_timestamp, cl.cl_sortkey_prefix, cl.cl_collation, cl.cl_type
+from categorylinks cl, page_sample ps 
+where cl.cl_from = ps.page_id
+INTO OUTFILE 'categorylinks_30k.csv'
+FIELDS TERMINATED BY ','
+ENCLOSED BY '"'
+LINES TERMINATED BY '\n';
+
+select c.*
+from category c
+where c.cat_title in (select cl.cl_to
+					from page_sample ps, categorylinks cl
+					where cl.cl_from = ps.page_id)
+INTO OUTFILE 'category_30k.csv'
+FIELDS TERMINATED BY ','
+ENCLOSED BY '"'
+LINES TERMINATED BY '\n';
+
+select il.*
+from imagelinks il, page_sample ps 
+where il.il_from = ps.page_id
+INTO OUTFILE 'imagelinks_30k.csv'
+FIELDS TERMINATED BY ','
+ENCLOSED BY '"'
+LINES TERMINATED BY '\n';
+
+select i.img_name, i.img_size, i.img_width, i.img_height, i.img_bits, i.img_media_type, 
+i.img_major_mime, i.img_minor_mime, i.img_description, i.img_user, 
+i.img_user_text,i.img_timestamp, 
+i.img_sha1, i.img_deleted 
+from  image i
+where i.img_name in (select il.il_to 
+					from page_sample ps, imagelinks il
+					where il.il_from = ps.page_id)
+INTO OUTFILE 'image_30k.csv'
+FIELDS TERMINATED BY ','
+ENCLOSED BY '"'
+LINES TERMINATED BY '\n';
+
+select pl.* 
+from pagelinks pl, page_sample ps 
+where pl.pl_from = ps.page_id
+INTO OUTFILE 'pagelinks_30k.csv'
+FIELDS TERMINATED BY ','
+ENCLOSED BY '"'
+LINES TERMINATED BY '\n';
+
+
