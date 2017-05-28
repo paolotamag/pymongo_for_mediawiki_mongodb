@@ -1,0 +1,150 @@
+select distinct pp_propname
+from page_props;
+
+select page_title, page_len
+from page
+order by page_len DESC
+limit 10;
+
+select pt_title
+from protected_titles
+where instr(pt_reason,"deprecating") and
+(instr(pt_title,"wiki") or instr(pt_title,"Wiki"))
+limit 100;
+
+select rd_title, count(*) as numRed
+from redirect
+where rd_from < 10000
+group by rd_title
+order by numRed DESC
+limit 1;
+
+select page_title
+from page
+where page_id in
+(select rd_from
+from redirect
+where rd_title = "List_of_sovereign_states");
+
+select c.cl_to as Category,
+p.page_title as Title,
+p.page_counter as Views
+from categorylinks c, page p
+where c.cl_from = p.page_id
+order by p.page_counter DESC
+limit 100;
+
+create view withMoreImages(numb_images,totalSize_MB,id) as
+select count(il.il_to) as count,
+sum(i.img_size)/1000 as totalSize, il.il_from
+from imagelinks il, image i
+where il.il_to = i.img_name
+group by il.il_from
+order by count DESC
+limit 100;
+
+select p.page_title,
+c.numb_images,
+c.totalSize_MB,
+c.totalSize_MB/c.numb_images
+as size_x_image
+from page p, withMoreImages c
+where p.page_id = c.id;
+
+select pl_title
+from pagelinks
+where pl_from in (
+select page_id
+from page
+where page_title in (
+select pl_title
+from pagelinks
+where pl_from in (
+select page_id
+from page
+where page_title = "List_of_Mars-crossing_minor_planets")));
+
+ select pl.pl_title
+from pagelinks pl
+where pl.pl_from in (
+select p.page_id
+from page p
+where instr(p.page_title,"List_of_Mars-crossing_minor_planets"))
+and pl.pl_title not in (select page_title pp
+from page pp );
+
+select p.page_title, c.cl_to
+from page p use index( ),
+categorylinks c use index( )
+where p.page_id = c.cl_from and instr(c.cl_to, "War");
+
+select p.page_title, c.cl_to
+from page p use index(PRIMARY),
+categorylinks c use index(cl_from)
+where p.page_id = c.cl_from and instr(c.cl_to, "War");
+
+select p1.page_title, count(pl1.pl_title) as neigh_pages
+from pagelinks pl1, page p1
+where p1.page_id = pl1.pl_from
+group by p1.page_title
+having count(pl1.pl_title) = (
+select max(v.neigh)
+from (
+select p2.page_title,count(pl2.pl_title) as neigh
+from pagelinks pl2, page p2
+where p2.page_id = pl2.pl_from
+group by p2.page_title ) v );
+
+create view pageneighNoIndex(title,neigh) as
+select page_title,count(pl_title) as neigh_pages
+from pagelinks, page
+where page_id = pl_from
+group by page_title;
+
+select pn1.title, pn1.neigh
+from pageneighNoIndex pn1
+where pn1.neigh = (select max(pn2.neigh)
+from pageneighNoIndex pn2);
+
+create view pageneigh(title,neigh) as
+select page_title,count(pl_title) as neigh_pages
+from pagelinks use index(pl_from),
+page use index(PRIMARY)
+where page_id = pl_from
+group by page_title;
+
+select pn1.title, pn1.neigh
+from pageneigh pn1
+where pn1.neigh = (select max(pn2.neigh)
+from pageneigh pn2);
+
+select page_title,count(pl_title) as neigh_pages
+from pagelinks use index(pl_from),
+page use index(PRIMARY)
+where page_id = pl_from
+group by page_title
+order by neigh_pages DESC
+limit 1;
+
+create view biggest_img_per_user_2017_noIndex as
+select img_user_text, max(img_size) as biggest_img
+from image
+where img_timestamp > 20170000000000
+group by img_user_text;
+
+select biggest_img
+from biggest_img_per_user_2017_noIndex
+where img_user_text = "Theo's Little Bot";
+
+create unique index Covering_Index
+on image (img_timestamp,img_user_text,img_size);
+
+create view biggest_img_per_user_2017 as
+select img_user_text, max(img_size) as biggest_img
+from image use index(Covering_Index)
+where img_timestamp > 20170000000000
+group by img_user_text;
+
+select biggest_img
+from biggest_img_per_user_2017
+where img_user_text = "Theo's Little Bot";
